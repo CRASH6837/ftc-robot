@@ -184,12 +184,17 @@ public class StarterBotTeleop extends OpMode {
          */
         telemetry.addData("Status", "Initialized");
 
+        /*
+        Calibration - 12/13/25
+        Focals (pixels) - Fx: 2327.03 Fy: 2327.03
+        Optical center - Cx: 966.009 Cy: 540.212
+        */
         aprilTag = new AprilTagProcessor.Builder()
                 .setTagFamily(AprilTagProcessor.TagFamily.TAG_36h11)
                 .setDrawTagID(true)
                 .setDrawTagOutline(true)
                 .setDrawAxes(true)
-                .setLensIntrinsics(822.317, 822.317, 319.495, 242.502) // **2025 Season Default Calib**
+                .setLensIntrinsics(2327.03, 2327.03, 966.009, 540.212)
                 .build();
         visionPortal = new VisionPortal.Builder()
                 .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
@@ -252,7 +257,6 @@ public class StarterBotTeleop extends OpMode {
         telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
         telemetry.addData("motorSpeed", launcher.getVelocity());
         telemetry.addData("Camera State", visionPortal.getCameraState());
-        telemetry.update();
         if (!aprilTag.getDetections().isEmpty()) {
             AprilTagDetection tag = aprilTag.getDetections().get(0);
             telemetry.addData("Tag ID", tag.id);
@@ -262,6 +266,7 @@ public class StarterBotTeleop extends OpMode {
         } else {
             telemetry.addLine("No AprilTags detected");
         }
+        telemetry.update();
 
 
     }
