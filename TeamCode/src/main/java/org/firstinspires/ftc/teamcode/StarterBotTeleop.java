@@ -35,7 +35,6 @@ package org.firstinspires.ftc.teamcode;
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
-import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor.Builder;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -46,6 +45,8 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import java.util.List;
+import java.lang.Math;
 
 /*
  * This file includes a teleop (driver-controlled) file for the goBILDA® StarterBot for the
@@ -68,6 +69,13 @@ public class StarterBotTeleop extends OpMode {
     final double FEED_TIME_SECONDS = 0.20; //The feeder servos run this long when a shot is requested.
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
+    List<Double> speedValues = List.of(0.3, 0.5, 0.9);
+    double driveSpeed = 0.9;
+    int driveSpeedIndex = speedValues.size() - 1;
+    double lastTimeShifted = 0.0;
+    double distance = 1000000000000000000000000.0;
+    boolean isAutons = true;
+    double breakTime = -1;
 
     /*
      * When we control our launcher motor, we are using encoders. These allow the control system
@@ -224,49 +232,15 @@ public class StarterBotTeleop extends OpMode {
      */
     @Override
     public void loop() {
-        /*
-         * Here we call a function called arcadeDrive. The arcadeDrive function takes the input from
-         * the joysticks, and applies power to the left and right drive motor to move the robot
-         * as requested by the driver. "arcade" refers to the control style we're using here.
-         * Much like a classic arcade game, when you move the left joystick forward both motors
-         * work to drive the robot forward, and when you move the right joystick left and right
-         * both motors work to rotate the robot. Combinations of these inputs can be used to create
-         * more complex maneuvers.
-         */
-        arcadeDrive(-gamepad1.left_stick_y, gamepad1.right_stick_x);
-
-        /*
-         * Here we give the user control of the speed of the launcher motor without automatically
-         * queuing a shot.
-         */
-        if (gamepad1.y) {
-            launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
-        } else if (gamepad1.b) { // stop flywheel
-            launcher.setVelocity(STOP_SPEED);
-        }
-
-        /*
-         * Now we call our "Launch" function.
-         */
-        launch(gamepad1.rightBumperWasPressed());
-
-        /*
-         * Show the state and motor powers
-         */
-        telemetry.addData("State", launchState);
-        telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
-        telemetry.addData("motorSpeed", launcher.getVelocity());
-        telemetry.addData("Camera State", visionPortal.getCameraState());
-        if (!aprilTag.getDetections().isEmpty()) {
-            AprilTagDetection tag = aprilTag.getDetections().get(0);
-            telemetry.addData("Tag ID", tag.id);
-            telemetry.addData("Pose X", "%.1f cm", tag.ftcPose.x);
-            telemetry.addData("Pose Y", "%.1f cm", tag.ftcPose.y);
-            telemetry.addData("Yaw", "%.1f°", tag.ftcPose.yaw);
+        // Seperated into 2 functions
+        if (isAutons) {
+            autons();
         } else {
-            telemetry.addLine("No AprilTags detected");
+            teleopLoop();
         }
-        telemetry.update();
+
+
+
 
 
     }
@@ -279,8 +253,8 @@ public class StarterBotTeleop extends OpMode {
     }
 
     void arcadeDrive(double forward, double rotate) {
-        leftPower = forward + rotate;
-        rightPower = forward - rotate;
+        leftPower = (forward + rotate) * driveSpeed;
+        rightPower = (forward - rotate) * driveSpeed;
 
         /*
          * Send calculated power to wheels
@@ -317,5 +291,104 @@ public class StarterBotTeleop extends OpMode {
                 }
                 break;
         }
+    }
+
+    void shiftGears(int dir, boolean wrapping) {
+        driveSpeedIndex += dir;
+        if (wrapping) {
+            if (driveSpeedIndex > speedValues.size() - 1) {
+                driveSpeedIndex = 0;
+            } else if (driveSpeedIndex < 0) {
+                driveSpeedIndex = speedValues.size() - 1;
+            }
+        } else {
+            driveSpeedIndex = Math.min(Math.max(driveSpeedIndex, 0),2);
+        }
+        driveSpeed = speedValues.get(driveSpeedIndex);
+        lastTimeShifted = feederTimer.milliseconds();
+    }
+
+    void teleopLoop() {
+        /*
+         * Here we call a function called arcadeDrive. The arcadeDrive function takes the input from
+         * the joysticks, and applies power to the left and right drive motor to move the robot
+         * as requested by the driver. "arcade" refers to the control style we're using here.
+         * Much like a classic arcade game, when you move the left joystick forward both motors
+         * work to drive the robot forward, and when you move the right joystick left and right
+         * both motors work to rotate the robot. Combinations of these inputs can be used to create
+         * more complex maneuvers.
+         */
+
+
+        arcadeDrive(-gamepad1.left_stick_y, gamepad1.right_stick_x);
+
+        /*
+         * Here we give the user control of the speed of the launcher motor without automatically
+         * queuing a shot.
+         */
+        if (gamepad1.y) {
+            launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
+        } else if (gamepad1.b) { // stop flywheel
+            launcher.setVelocity(STOP_SPEED);
+        }
+
+        /*
+         * Now we call our "Launch" function.
+         */
+        launch(gamepad1.rightBumperWasPressed());
+
+        if (feederTimer.milliseconds() - lastTimeShifted >= 250) {
+            if (gamepad1.left_bumper) {
+                shiftGears(-1, true);
+            } else if (gamepad1.left_trigger >= 0.9) {
+                shiftGears(1, true);
+            }
+        }
+    }
+    void autons() {
+        driveToTag();
+    }
+
+    void driveToTag() {
+
+        printTelemetry();
+        arcadeDrive(1, 0);
+        if (distance <= 100) {
+            shiftGears(-1, false);
+        }
+        if (distance <= 60 && breakTime == -1) {
+            breakTime = feederTimer.milliseconds() + 1000;
+        }
+        if (feederTimer.milliseconds() >= breakTime && breakTime != -1) {
+            isAutons = false;
+        }
+
+
+    }
+
+    void printTelemetry() {
+        /*
+         * Show the state and motor powers
+         */
+        telemetry.addData("State", launchState);
+        telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
+        telemetry.addData("motorSpeed", launcher.getVelocity());
+        telemetry.addData("Camera State", visionPortal.getCameraState());
+        if (!aprilTag.getDetections().isEmpty()) {
+            AprilTagDetection tag = aprilTag.getDetections().get(0);
+            telemetry.addData("Tag ID", tag.id);
+            telemetry.addData("Pose X", "%.1f cm", tag.ftcPose.x);
+            telemetry.addData("Pose Y", "%.1f cm", tag.ftcPose.y);
+            distance = Math.sqrt(Math.pow(tag.ftcPose.x,2) + Math.pow(tag.ftcPose.y,2));
+            telemetry.addData("Distance", "%.1f cm", distance);
+            telemetry.addData("Yaw", "%.1f°", tag.ftcPose.yaw);
+        } else {
+            telemetry.addLine("No AprilTags detected");
+        }
+        telemetry.addData("Speed", driveSpeed);
+        telemetry.addData("Gear", driveSpeedIndex);
+        telemetry.addData("Break Time", breakTime);
+        //telemetry.addData("left trigger:", (gamepad1.left_trigger));
+        telemetry.update();
     }
 }
