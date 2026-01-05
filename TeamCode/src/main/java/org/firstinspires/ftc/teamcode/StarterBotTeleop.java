@@ -76,6 +76,8 @@ public class StarterBotTeleop extends OpMode {
     double distance = 1000000000000000000000000.0;
     boolean isAutons = true;
     double breakTime = -1;
+    double yaw = 0;
+    double bearing = -37;
 
     /*
      * When we control our launcher motor, we are using encoders. These allow the control system
@@ -83,8 +85,8 @@ public class StarterBotTeleop extends OpMode {
      * velocity. Here we are setting the target, and minimum velocity that the launcher should run
      * at. The minimum velocity is a threshold for determining when to fire.
      */
-    final double LAUNCHER_TARGET_VELOCITY = 1125;   // OG is 1125
-    final double LAUNCHER_MIN_VELOCITY = 1075;      //OG is 1075
+    final double LAUNCHER_TARGET_VELOCITY = 1175;   // OG is 1125
+    final double LAUNCHER_MIN_VELOCITY = 1125;      //OG is 1075
 
     // Declare OpMode members.
     private DcMotor leftDrive = null;
@@ -202,7 +204,7 @@ public class StarterBotTeleop extends OpMode {
                 .setDrawTagID(true)
                 .setDrawTagOutline(true)
                 .setDrawAxes(true)
-                .setLensIntrinsics(2327.03, 2327.03, 966.009, 540.212)
+                .setLensIntrinsics(1912.43, 1912.43, 877.742, 691.186)
                 .build();
         visionPortal = new VisionPortal.Builder()
                 .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
@@ -234,6 +236,11 @@ public class StarterBotTeleop extends OpMode {
     public void loop() {
         // Seperated into 2 functions
         if (isAutons) {
+            // exit autons if both bumpers are pressed
+            if (gamepad1.left_bumper && gamepad1.right_bumper) {
+                isAutons = false;
+            }
+
             autons();
         } else {
             teleopLoop();
@@ -252,6 +259,49 @@ public class StarterBotTeleop extends OpMode {
     public void stop() {
     }
 
+    void teleopLoop() {
+        /*
+         * Here we call a function called arcadeDrive. The arcadeDrive function takes the input from
+         * the joysticks, and applies power to the left and right drive motor to move the robot
+         * as requested by the driver. "arcade" refers to the control style we're using here.
+         * Much like a classic arcade game, when you move the left joystick forward both motors
+         * work to drive the robot forward, and when you move the right joystick left and right
+         * both motors work to rotate the robot. Combinations of these inputs can be used to create
+         * more complex maneuvers.
+         */
+
+
+        arcadeDrive(-gamepad1.left_stick_y, gamepad1.right_stick_x);
+
+        /*
+         * Here we give the user control of the speed of the launcher motor without automatically
+         * queuing a shot.
+         */
+        if (gamepad1.y) {
+            launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
+        } else if (gamepad1.b) { // stop flywheel
+            launcher.setVelocity(STOP_SPEED);
+        }
+
+        /*
+         * Now we call our "Launch" function.
+         */
+        launch(gamepad1.rightBumperWasPressed());
+
+        if (feederTimer.milliseconds() - lastTimeShifted >= 250) {
+            if (gamepad1.left_bumper) {
+                shiftGears(-1, true);
+            } else if (gamepad1.left_trigger >= 0.9) {
+                shiftGears(1, true);
+            }
+        }
+    }
+    void autons() {
+        printTelemetry();
+        faceTag();
+        //driveToTag();
+
+    }
     void arcadeDrive(double forward, double rotate) {
         leftPower = (forward + rotate) * driveSpeed;
         rightPower = (forward - rotate) * driveSpeed;
@@ -308,50 +358,11 @@ public class StarterBotTeleop extends OpMode {
         lastTimeShifted = feederTimer.milliseconds();
     }
 
-    void teleopLoop() {
-        /*
-         * Here we call a function called arcadeDrive. The arcadeDrive function takes the input from
-         * the joysticks, and applies power to the left and right drive motor to move the robot
-         * as requested by the driver. "arcade" refers to the control style we're using here.
-         * Much like a classic arcade game, when you move the left joystick forward both motors
-         * work to drive the robot forward, and when you move the right joystick left and right
-         * both motors work to rotate the robot. Combinations of these inputs can be used to create
-         * more complex maneuvers.
-         */
 
-
-        arcadeDrive(-gamepad1.left_stick_y, gamepad1.right_stick_x);
-
-        /*
-         * Here we give the user control of the speed of the launcher motor without automatically
-         * queuing a shot.
-         */
-        if (gamepad1.y) {
-            launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
-        } else if (gamepad1.b) { // stop flywheel
-            launcher.setVelocity(STOP_SPEED);
-        }
-
-        /*
-         * Now we call our "Launch" function.
-         */
-        launch(gamepad1.rightBumperWasPressed());
-
-        if (feederTimer.milliseconds() - lastTimeShifted >= 250) {
-            if (gamepad1.left_bumper) {
-                shiftGears(-1, true);
-            } else if (gamepad1.left_trigger >= 0.9) {
-                shiftGears(1, true);
-            }
-        }
-    }
-    void autons() {
-        driveToTag();
-    }
 
     void driveToTag() {
 
-        printTelemetry();
+
         arcadeDrive(1, 0);
         if (distance <= 100) {
             shiftGears(-1, false);
@@ -364,6 +375,16 @@ public class StarterBotTeleop extends OpMode {
         }
 
 
+    }
+
+    void faceTag() {
+            if (bearing < 15) {
+                arcadeDrive(0,0.5);
+            } else if (bearing > 17) {
+                arcadeDrive(0,-0.5);
+            } else {
+                arcadeDrive(1,0);
+            }
     }
 
     void printTelemetry() {
@@ -379,11 +400,18 @@ public class StarterBotTeleop extends OpMode {
             telemetry.addData("Tag ID", tag.id);
             telemetry.addData("Pose X", "%.1f cm", tag.ftcPose.x);
             telemetry.addData("Pose Y", "%.1f cm", tag.ftcPose.y);
+            telemetry.addData("Pose Z", "%.1f cm", tag.ftcPose.z);
+            telemetry.addData("Bearing", "%.1f°", tag.ftcPose.bearing);
+            bearing = tag.ftcPose.bearing;
             distance = Math.sqrt(Math.pow(tag.ftcPose.x,2) + Math.pow(tag.ftcPose.y,2));
             telemetry.addData("Distance", "%.1f cm", distance);
             telemetry.addData("Yaw", "%.1f°", tag.ftcPose.yaw);
+            yaw = tag.ftcPose.yaw;
         } else {
             telemetry.addLine("No AprilTags detected");
+            yaw = 0;
+            bearing = 16;
+
         }
         telemetry.addData("Speed", driveSpeed);
         telemetry.addData("Gear", driveSpeedIndex);
