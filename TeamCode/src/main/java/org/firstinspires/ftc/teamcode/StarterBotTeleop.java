@@ -235,9 +235,10 @@ public class StarterBotTeleop extends OpMode {
     @Override
     public void loop() {
         // Seperated into 2 functions
+        printTelemetry();
         if (isAutons) {
             // exit autons if both bumpers are pressed
-            if (gamepad1.left_bumper && gamepad1.right_bumper) {
+            if (gamepad1.leftBumperWasPressed() && gamepad1.rightBumperWasPressed()) {
                 isAutons = false;
             }
 
@@ -289,15 +290,15 @@ public class StarterBotTeleop extends OpMode {
         launch(gamepad1.rightBumperWasPressed());
 
         if (feederTimer.milliseconds() - lastTimeShifted >= 250) {
-            if (gamepad1.left_bumper) {
-                shiftGears(-1, true);
+            if (gamepad1.leftBumperWasPressed()) {
+                shiftGears(-1, false);
             } else if (gamepad1.left_trigger >= 0.9) {
-                shiftGears(1, true);
+                shiftGears(1, false);
             }
         }
     }
     void autons() {
-        printTelemetry();
+
         faceTag();
         //driveToTag();
 
