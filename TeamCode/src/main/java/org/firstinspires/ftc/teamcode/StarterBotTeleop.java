@@ -33,6 +33,8 @@
 package org.firstinspires.ftc.teamcode;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
+
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
@@ -78,6 +80,9 @@ public class StarterBotTeleop extends OpMode {
     double breakTime = -1;
     double yaw = 0;
     double bearing = -37;
+    double tagY = 3000000000.0;
+    int team = 0;
+
 
     /*
      * When we control our launcher motor, we are using encoders. These allow the control system
@@ -195,16 +200,16 @@ public class StarterBotTeleop extends OpMode {
         telemetry.addData("Status", "Initialized");
 
         /*
-        Calibration - 12/13/25
-        Focals (pixels) - Fx: 2327.03 Fy: 2327.03
-        Optical center - Cx: 966.009 Cy: 540.212
+        Calibration - 1/12/26
+        Focals (pixels) - Fx: 1437.7 Fy: 1437.7
+        Optical center - Cx: 963.688 Cy: 555.119
         */
         aprilTag = new AprilTagProcessor.Builder()
                 .setTagFamily(AprilTagProcessor.TagFamily.TAG_36h11)
                 .setDrawTagID(true)
                 .setDrawTagOutline(true)
                 .setDrawAxes(true)
-                .setLensIntrinsics(1912.43, 1912.43, 877.742, 691.186)
+                .setLensIntrinsics(1437.7, 1437.7, 963.688, 555.119)
                 .build();
         visionPortal = new VisionPortal.Builder()
                 .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
@@ -220,6 +225,14 @@ public class StarterBotTeleop extends OpMode {
      */
     @Override
     public void init_loop() {
+        if (team == 0) {
+            for (AprilTagDetection goalTag : aprilTag.getDetections()) {
+                if ((goalTag.id == 20) || (goalTag.id == 24)) {
+                    team = goalTag.id;
+                    telemetry.addData("Team", team);
+                }
+            }
+        }
     }
 
     /*
@@ -227,6 +240,8 @@ public class StarterBotTeleop extends OpMode {
      */
     @Override
     public void start() {
+
+
     }
 
     /*
@@ -298,8 +313,11 @@ public class StarterBotTeleop extends OpMode {
         }
     }
     void autons() {
-
-        faceTag();
+        if (feederTimer.milliseconds() <= breakTime || breakTime == -1) {
+            faceTag();
+        } else {
+            launch(true);
+        }
         //driveToTag();
 
     }
@@ -379,13 +397,27 @@ public class StarterBotTeleop extends OpMode {
     }
 
     void faceTag() {
-            if (bearing < 15) {
-                arcadeDrive(0,0.5);
-            } else if (bearing > 17) {
-                arcadeDrive(0,-0.5);
+        if (tagY >= 70) {
+            if (bearing < 20) {
+                //Turn Right
+                arcadeDrive(0, 0.5);
+            } else if (bearing > 25) {
+                //Turn Left
+                arcadeDrive(0, -0.5);
             } else {
-                arcadeDrive(1,0);
+                //Drive forwards
+                arcadeDrive(1, 0);
+
             }
+        } else {
+            //Drive to wall
+            if (breakTime == -1) {
+                breakTime = feederTimer.milliseconds() + 2000;
+                launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
+            }
+
+            arcadeDrive(1, 0);
+        }
     }
 
     void printTelemetry() {
@@ -398,16 +430,23 @@ public class StarterBotTeleop extends OpMode {
         telemetry.addData("Camera State", visionPortal.getCameraState());
         if (!aprilTag.getDetections().isEmpty()) {
             AprilTagDetection tag = aprilTag.getDetections().get(0);
+            for (AprilTagDetection Tag : aprilTag.getDetections())  {
+                if (Tag.id == team) {
+                    tag = Tag;
+                    tagY = tag.ftcPose.y;
+                    bearing = tag.ftcPose.bearing;
+                    yaw = tag.ftcPose.yaw;
+                }
+            }
+            //AprilTagDetection tag = aprilTag.getDetections().get(0);
             telemetry.addData("Tag ID", tag.id);
             telemetry.addData("Pose X", "%.1f cm", tag.ftcPose.x);
             telemetry.addData("Pose Y", "%.1f cm", tag.ftcPose.y);
             telemetry.addData("Pose Z", "%.1f cm", tag.ftcPose.z);
             telemetry.addData("Bearing", "%.1f°", tag.ftcPose.bearing);
-            bearing = tag.ftcPose.bearing;
             distance = Math.sqrt(Math.pow(tag.ftcPose.x,2) + Math.pow(tag.ftcPose.y,2));
             telemetry.addData("Distance", "%.1f cm", distance);
             telemetry.addData("Yaw", "%.1f°", tag.ftcPose.yaw);
-            yaw = tag.ftcPose.yaw;
         } else {
             telemetry.addLine("No AprilTags detected");
             yaw = 0;
