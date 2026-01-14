@@ -35,6 +35,9 @@ package org.firstinspires.ftc.teamcode;
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+//import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.CameraControl;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.ExposureControl;
+//import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.GainControl;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
@@ -49,6 +52,8 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import java.util.List;
 import java.lang.Math;
+//import java.util.concurrent.TimeUnit;
+
 
 /*
  * This file includes a teleop (driver-controlled) file for the goBILDA® StarterBot for the
@@ -76,7 +81,7 @@ public class StarterBotTeleop extends OpMode {
     int driveSpeedIndex = speedValues.size() - 1;
     double lastTimeShifted = 0.0;
     double distance = 1000000000000000000000000.0;
-    boolean isAutons = true;
+    boolean isAutons = false;
     double breakTime = -1;
     double yaw = 0;
     double bearing = -37;
@@ -102,8 +107,12 @@ public class StarterBotTeleop extends OpMode {
     private VisionPortal visionPortal;
     private AprilTagProcessor aprilTag;
 
+    //private ExposureControl camExposureControl;
+    //private GainControl camGainControl;
+
 
     ElapsedTime feederTimer = new ElapsedTime();
+    private WebcamName Camera;
 
     /*
      * TECH TIP: State Machines
@@ -216,7 +225,10 @@ public class StarterBotTeleop extends OpMode {
                 .addProcessor(aprilTag)
                 .enableLiveView(true)
                 .setAutoStopLiveView(false)
+
                 .build();
+        //camExposureControl = visionPortal.getCameraControl(ExposureControl.class);
+        //camGainControl = visionPortal.getCameraControl(GainControl.class);
 
     }
 
@@ -398,10 +410,10 @@ public class StarterBotTeleop extends OpMode {
 
     void faceTag() {
         if (tagY >= 70) {
-            if (bearing < 20) {
+            if (bearing < 22) {
                 //Turn Right
                 arcadeDrive(0, 0.5);
-            } else if (bearing > 25) {
+            } else if (bearing > 23) {
                 //Turn Left
                 arcadeDrive(0, -0.5);
             } else {
@@ -428,6 +440,9 @@ public class StarterBotTeleop extends OpMode {
         telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
         telemetry.addData("motorSpeed", launcher.getVelocity());
         telemetry.addData("Camera State", visionPortal.getCameraState());
+        //telemetry.addData("Exposure", camExposureControl.getExposure(TimeUnit.MILLISECONDS));
+        //telemetry.addData("Gain", camGainControl.getGain());
+
         if (!aprilTag.getDetections().isEmpty()) {
             AprilTagDetection tag = aprilTag.getDetections().get(0);
             for (AprilTagDetection Tag : aprilTag.getDetections())  {
