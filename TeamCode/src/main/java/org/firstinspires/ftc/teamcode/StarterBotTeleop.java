@@ -81,12 +81,13 @@ public class StarterBotTeleop extends OpMode {
     int driveSpeedIndex = speedValues.size() - 1;
     double lastTimeShifted = 0.0;
     double distance = 1000000000000000000000000.0;
-    boolean isAutons = false;
+    boolean isAutons = true;
     double breakTime = -1;
     double yaw = 0;
     double bearing = -37;
     double tagY = 3000000000.0;
     int team = 0;
+    int autoStep = 0;
 
 
     /*
@@ -325,10 +326,25 @@ public class StarterBotTeleop extends OpMode {
         }
     }
     void autons() {
-        if (feederTimer.milliseconds() <= breakTime || breakTime == -1) {
-            faceTag();
+        if (breakTime == -1) {
+            breakTime = feederTimer.milliseconds() + 1000;
+        }
+        if (feederTimer.milliseconds() <= breakTime) {
+            if (autoStep == 0) {
+                arcadeDrive(1, 0);
+            } else if (autoStep == 1) {
+                arcadeDrive(0, 0);
+                //faceTag();
+            } else {
+                //launch(true);
+            }
         } else {
-            launch(true);
+            autoStep ++;
+            if (autoStep == 0) {
+                breakTime += 30000;
+            } else if (autoStep == 1) {
+                breakTime += 10000;
+            }
         }
         //driveToTag();
 
@@ -410,10 +426,10 @@ public class StarterBotTeleop extends OpMode {
 
     void faceTag() {
         if (tagY >= 70) {
-            if (bearing < 22) {
+            if (bearing < 21) {
                 //Turn Right
                 arcadeDrive(0, 0.5);
-            } else if (bearing > 23) {
+            } else if (bearing > 24) {
                 //Turn Left
                 arcadeDrive(0, -0.5);
             } else {
