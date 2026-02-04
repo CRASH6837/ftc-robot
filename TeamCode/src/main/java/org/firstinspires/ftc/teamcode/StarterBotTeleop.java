@@ -81,7 +81,7 @@ public class StarterBotTeleop extends OpMode {
     int driveSpeedIndex = speedValues.size() - 1;
     double lastTimeShifted = 0.0;
     double distance = 1000000000000000000000000.0;
-    boolean isAutons = true;
+    boolean isAutons = false;
     double breakTime = -1;
     double yaw = 0;
     double bearing = -37;
@@ -96,8 +96,8 @@ public class StarterBotTeleop extends OpMode {
      * velocity. Here we are setting the target, and minimum velocity that the launcher should run
      * at. The minimum velocity is a threshold for determining when to fire.
      */
-    final double LAUNCHER_TARGET_VELOCITY = 1175;   // OG is 1125
-    final double LAUNCHER_MIN_VELOCITY = 1125;      //OG is 1075
+    final double LAUNCHER_TARGET_VELOCITY = 1370;   // wall shoot 1800 normal+ 1350 normal 1175
+    final double LAUNCHER_MIN_VELOCITY = 1320;      //wall shoot 1750 normal+ 1300 normal 1125
 
     // Declare OpMode members.
     private DcMotor leftDrive = null;
@@ -347,6 +347,8 @@ public class StarterBotTeleop extends OpMode {
             }
         }
         //driveToTag();
+
+        //2nd autons will drive in reverse and we have to figure out a time to this specific area marked with purple stripe need ot be out of the line and we need to end up outside of triangle line which ever part is more reliable ot shoot from make sure we ar turning back here make 2 pieces and make them swithc angles depending on
 
     }
     void arcadeDrive(double forward, double rotate) {

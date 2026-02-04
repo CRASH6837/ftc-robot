@@ -34,11 +34,10 @@ package org.firstinspires.ftc.teamcode;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
-import org.firstinspires.ftc.robotcore.external.Telemetry;
 //import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.CameraControl;
-import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.ExposureControl;
 //import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.GainControl;
 import org.firstinspires.ftc.vision.VisionPortal;
+import com.qualcomm.robotcore.hardware.DigitalChannel;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -70,12 +69,15 @@ import java.lang.Math;
  * we will also need to adjust the "PIDF" coefficients with some that are a better fit for our application.
  */
 
-@TeleOp(name = "AutonomousBLUE", group = "StarterBot")
+@TeleOp(name = "BattleYamOS 26.1", group = "StarterBot")
 //@Disabled
-public class AutonomusBlue extends OpMode {
+public class AutonomusShoot extends OpMode {
     final double FEED_TIME_SECONDS = 0.20; //The feeder servos run this long when a shot is requested.
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
+    DigitalChannel switchLR;
+    DigitalChannel switch12;
+
     List<Double> speedValues = List.of(1.0, 1.5, 2.0);
     double driveSpeed = 1.5;
     int driveSpeedIndex = speedValues.size() - 1;
@@ -150,6 +152,11 @@ public class AutonomusBlue extends OpMode {
      */
     @Override
     public void init() {
+
+        switchLR = hardwareMap.get(DigitalChannel.class, "switchLR");
+        switchLR.setMode(DigitalChannel.Mode.INPUT);
+        switch12 = hardwareMap.get(DigitalChannel.class, "switch12");
+        switch12.setMode(DigitalChannel.Mode.INPUT);
         launchState = LaunchState.IDLE;
 
         /*
@@ -336,18 +343,22 @@ public class AutonomusBlue extends OpMode {
     }
     void autons() {
         if (breakTime == -1) {
-            breakTime = programTime.milliseconds() + 1000;
+            breakTime = programTime.milliseconds() + 1250;
         }
         if (programTime.milliseconds() <= breakTime) {
             if (autoStep == 0) {
                 arcadeDrive(-1, 0);
             } else if (autoStep == 1) {
                 arcadeDrive(0, 0);
-                launch(true);
+                launch(!switch12.getState());
             } else if (autoStep == 2) {
                 launch(false);
                 launcher.setVelocity(STOP_SPEED);
-                arcadeDrive(-1, 0.5 );
+                if (!switch12.getState()) {
+                    double turn = (switchLR.getState()) ? -0.5 : 0.5;
+                    arcadeDrive(1, turn);
+                }
+
             } else {
                 arcadeDrive(0, 0);
             }
@@ -506,7 +517,8 @@ public class AutonomusBlue extends OpMode {
         telemetry.addData("Break Time", breakTime);
         telemetry.addData("Current Time", programTime.milliseconds());
         telemetry.addData("Launch Speed", LAUNCHER_TARGET_VELOCITY - 1370);
-        //telemetry.addData("left trigger:", (gamepad1.left_trigger));
+        telemetry.addData("switchLR", switchLR.getState());
+        telemetry.addData("switch12", switch12.getState());
         telemetry.update();
     }
 }
